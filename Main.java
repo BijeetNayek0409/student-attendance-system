@@ -6,72 +6,71 @@ public class Main {
 
     public static void main(String[] args) {
 
-        JFrame frame = new JFrame("Student Attendance System");
+        DBConnection.connect();
 
-        JButton loadBtn = new JButton("Load Students");
+        JFrame frame = new JFrame("Student Attendance System");
+        frame.setSize(900, 600);
+        frame.setLayout(new BorderLayout());
+
+
+        JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
+
+        JTextField nameField = new JTextField(10);
+        JTextField classField = new JTextField(5);
+
+        JButton addStudentBtn = new JButton("Add Student");
         JButton presentBtn = new JButton("Present");
         JButton absentBtn = new JButton("Absent");
-        JButton saveBtn = new JButton("Save");
-        JButton reportBtn = new JButton("Report");
+        JButton saveBtn = new JButton("Save Attendance");
 
-        JLabel dateLabel = new JLabel("Date (YYYY-MM-DD):");
         JTextField dateField = new JTextField("2026-03-30", 10);
 
-        frame.setLayout(new FlowLayout());
-        frame.setSize(800, 600);
+        topPanel.add(new JLabel("Name:"));
+        topPanel.add(nameField);
 
-        presentBtn.setBackground(Color.GREEN);
-        absentBtn.setBackground(Color.RED);
-        saveBtn.setBackground(Color.CYAN);
+        topPanel.add(new JLabel("Class:"));
+        topPanel.add(classField);
 
-        frame.add(dateLabel);
-        frame.add(dateField);
-        frame.add(loadBtn);
-        frame.add(presentBtn);
-        frame.add(absentBtn);
-        frame.add(saveBtn);
-        frame.add(reportBtn);
+        topPanel.add(addStudentBtn);
+        topPanel.add(presentBtn);
+        topPanel.add(absentBtn);
+        topPanel.add(saveBtn);
 
-        final JTable[] table = new JTable[1];
+        topPanel.add(new JLabel("Date:"));
+        topPanel.add(dateField);
 
-        // LOAD
-        loadBtn.addActionListener(e -> {
-            table[0] = StudentTable.getTable();
-            JScrollPane sp = new JScrollPane(table[0]);
-            sp.setPreferredSize(new Dimension(700, 300));
-            frame.add(sp);
-            frame.revalidate();
-        });
+       
+        JTable table = StudentTable.getTable();
+        JScrollPane scrollPane = new JScrollPane(table);
 
-        // PRESENT
+        // 🔷 ADD TO FRAME
+        frame.add(topPanel, BorderLayout.NORTH);
+        frame.add(scrollPane, BorderLayout.CENTER);
+
+        // 🔥 BUTTON LOGIC
+
         presentBtn.addActionListener(e -> {
-            if (table[0] != null) {
-                int row = table[0].getSelectedRow();
-                if (row != -1) {
-                    table[0].setValueAt("Present", row, 3);
-                }
+            int row = table.getSelectedRow();
+            if (row != -1) {
+                table.setValueAt("Present", row, 3);
             }
         });
 
-        // ABSENT
         absentBtn.addActionListener(e -> {
-            if (table[0] != null) {
-                int row = table[0].getSelectedRow();
-                if (row != -1) {
-                    table[0].setValueAt("Absent", row, 3);
-                }
+            int row = table.getSelectedRow();
+            if (row != -1) {
+                table.setValueAt("Absent", row, 3);
             }
         });
 
-        // SAVE
         saveBtn.addActionListener(e -> {
             try {
                 Connection conn = DBConnection.connect();
 
-                for (int i = 0; i < table[0].getRowCount(); i++) {
+                for (int i = 0; i < table.getRowCount(); i++) {
 
-                    int studentId = (int) table[0].getValueAt(i, 0);
-                    String status = (String) table[0].getValueAt(i, 3);
+                    int studentId = (int) table.getValueAt(i, 0);
+                    String status = (String) table.getValueAt(i, 3);
 
                     PreparedStatement ps = conn.prepareStatement(
                             "INSERT INTO attendance (student_id, date, status) VALUES (?, ?, ?)"
@@ -84,41 +83,40 @@ public class Main {
                     ps.executeUpdate();
                 }
 
-                JOptionPane.showMessageDialog(frame, "Saved!");
+                JOptionPane.showMessageDialog(frame, "Attendance Saved!");
 
             } catch (Exception ex) {
                 ex.printStackTrace();
             }
         });
 
-        // REPORT
-        reportBtn.addActionListener(e -> {
+        addStudentBtn.addActionListener(e -> {
             try {
-                Connection conn = DBConnection.connect();
-                Statement st = conn.createStatement();
+                String name = nameField.getText();
+                String className = classField.getText();
 
-                ResultSet rs = st.executeQuery(
-                        "SELECT student_id, COUNT(*) total, " +
-                                "SUM(CASE WHEN status='Present' THEN 1 ELSE 0 END) present " +
-                                "FROM attendance GROUP BY student_id"
-                );
-
-                StringBuilder report = new StringBuilder();
-
-                while (rs.next()) {
-                    int id = rs.getInt("student_id");
-                    int total = rs.getInt("total");
-                    int present = rs.getInt("present");
-
-                    double percent = (present * 100.0) / total;
-
-                    report.append("ID: ").append(id)
-                            .append(" → ")
-                            .append(String.format("%.2f", percent))
-                            .append("%\n");
+                if (name.isEmpty() || className.isEmpty()) {
+                    JOptionPane.showMessageDialog(frame, "Enter all fields!");
+                    return;
                 }
 
-                JOptionPane.showMessageDialog(frame, report.toString());
+                Connection conn = DBConnection.connect();
+
+                PreparedStatement ps = conn.prepareStatement(
+                        "INSERT INTO students (name, class) VALUES (?, ?)"
+                );
+
+                ps.setString(1, name);
+                ps.setString(2, className);
+
+                ps.executeUpdate();
+
+                JOptionPane.showMessageDialog(frame, "Student Added!");
+
+                StudentTable.loadStudents();
+
+                nameField.setText("");
+                classField.setText("");
 
             } catch (Exception ex) {
                 ex.printStackTrace();
