@@ -43,11 +43,11 @@ public class Main {
         JTable table = StudentTable.getTable();
         JScrollPane scrollPane = new JScrollPane(table);
 
-        // 🔷 ADD TO FRAME
+
         frame.add(topPanel, BorderLayout.NORTH);
         frame.add(scrollPane, BorderLayout.CENTER);
 
-        // 🔥 BUTTON LOGIC
+        
 
         presentBtn.addActionListener(e -> {
             int row = table.getSelectedRow();
